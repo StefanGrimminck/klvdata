@@ -98,66 +98,39 @@ def bytes_to_hexstr(value, start='', sep=' '):
 
 
 def linear_map(src_value, src_domain, dst_range):
-    """Maps source value (src_value) in the source domain
-    (source_domain) onto the destination range (dest_range) using linear
-    interpretation.
-
-    Except that at the moment src_value is a bytes value that once converted
-    to integer that it then is on the src_domain.
-
-    Ideally would like to move the conversion from bytes to int externally.
-
-    Once value is same base and format as src_domain (i.e. converted from bytes),
-    it should always fall within the src_domain. If not, that's a problem.
-    """
     src_min, src_max, dst_min, dst_max = src_domain + dst_range
 
+    # Adjust src_value if it's exactly the lower boundary of a signed integer
+    if src_value < src_min or src_value > src_max :
+        return None
+
     if not (src_min <= src_value <= src_max):
-        raise ValueError
+        print(f"Value {src_value} out of range ({src_min}, {src_max})")
 
     slope = (dst_max - dst_min) / (src_max - src_min)
     dst_value = slope * (src_value - src_min) + dst_min
 
     if not (dst_min <= dst_value <= dst_max):
-        raise ValueError
+        print(f"Destination value {dst_value} out of range ({dst_min}, {dst_max})")
 
     return dst_value
 
 
-def bytes_to_float(value, _domain, _range, _error=None):
+def bytes_to_float(value, _domain, _range):
     """Convert the fixed point value self.value to a floating point value."""
     src_value = int().from_bytes(value, byteorder='big', signed=(min(_domain) < 0))
-
-    if src_value == _error:
-        return None
-
     return linear_map(src_value, _domain, _range)
 
 
-def ieee754_bytes_to_fp(value):
-    """Convert the fixed point value self.value to a ieee754 double point value."""
-    #src_value = int().from_bytes(value, byteorder='big', signed=False)
-    l = len(value)
-    if l == 4:
-        return unpack('>f', value)[0]
-    elif l == 8:
-        return unpack('>d', value)[0]
-    else:
-        raise ValueError
-
-def float_to_bytes(value, _domain, _range, _error=None):
-    """Convert the fixed point value self.value to a floating point value."""
-    # Some classes like MappedElement are calling float_to_bytes with arguments _domain
-    # and _range in the incorrect order. The naming convention used is confusing and
-    # needs addressed. Until that time, swap the order here as a workaround...
+def float_to_bytes(value, _domain, _range):
+    print(f"Original float: {value}")
     src_domain, dst_range = _range, _domain
     src_min, src_max, dst_min, dst_max = src_domain + dst_range
-    length = int((dst_max - dst_min - 1).bit_length() / 8)
-    if value is None:
-        dst_value = _error
-    else:
-        dst_value = linear_map(value, src_domain=src_domain, dst_range=dst_range)
-    return round(dst_value).to_bytes(length, byteorder='big', signed=(dst_min < 0))
+    length = (dst_max.bit_length() + 7) // 8  # Adjusted to ensure correct byte length
+    dst_value = linear_map(value, src_domain=src_domain, dst_range=dst_range)
+    byte_result = round(dst_value).to_bytes(length, byteorder='big', signed=(dst_min < 0))
+    print(f"Mapped int: {dst_value}, Byte representation: {byte_result}")
+    return byte_result
 
 
 def packet_checksum(data):

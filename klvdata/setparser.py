@@ -39,8 +39,7 @@ class SetParser(Element, metaclass=ABCMeta):
     def __init__(self, value, key_length=1):
         """All parser needs is the value, no other information"""
         super().__init__(self.key, value)
-        if not hasattr(self, 'key_length'):
-            self.key_length = key_length
+        self.key_length = key_length
         self.items = OrderedDict()
         self.parse()
 
@@ -61,9 +60,7 @@ class SetParser(Element, metaclass=ABCMeta):
         for key, value in KLVParser(self.value, self.key_length):
             try:
                 self.items[key] = self.parsers[key](value)
-            except (KeyError, TypeError):
-                self.items[key] = self._unknown_element(key, value)
-            except ValueError:
+            except KeyError:
                 self.items[key] = self._unknown_element(key, value)
 
     @classmethod
@@ -125,8 +122,6 @@ class SetParser(Element, metaclass=ABCMeta):
                 print(indent * "\t" + str(type(item)))
                 if hasattr(item, 'items'):
                     repeat(item.items.values(), indent+1)
-                else:
-                    print((indent+1) * "\t" + str(item.value))
 
         repeat(self.items.values())
 
@@ -136,11 +131,22 @@ def str_dict(values):
 
     def per_item(value, indent=0):
         for item in value:
-            if isinstance(item, Element):
+            # Check if the item is a number
+            if isinstance(item, (int, float)):
                 out.append(indent * "\t" + str(item))
+            elif isinstance(item, (list, tuple)):
+                out.append(indent * "\t" + "[" + ", ".join(str(x) for x in item) + "]")
+                per_item(item, indent + 1)
+            elif isinstance(item, dict):
+                out.append(indent * "\t" + "{")
+                for k, v in item.items():
+                    out.append(indent * "\t" + f"{k}: {v}")
+                    per_item([v], indent + 1)
+                out.append(indent * "\t" + "}")
             else:
                 out.append(indent * "\t" + str(item))
 
     per_item(values)
 
     return '\n'.join(out)
+

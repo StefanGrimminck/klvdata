@@ -34,8 +34,6 @@ from klvdata.common import bytes_to_str
 from klvdata.common import datetime_to_bytes
 from klvdata.common import float_to_bytes
 from klvdata.common import str_to_bytes
-from klvdata.common import ieee754_bytes_to_fp
-                                           
 
 
 class ElementParser(Element, metaclass=ABCMeta):
@@ -126,14 +124,12 @@ class StringValue(BaseValue):
         return str_to_bytes(self.value)
 
     def __str__(self):
-        if self.value is not None:
-            return str(self.value)
-        return ""
+        return str(self.value)
 
 
 class MappedElementParser(ElementParser, metaclass=ABCMeta):
     def __init__(self, value):
-        super().__init__(MappedValue(value, self._domain, self._range, self._error))
+        super().__init__(MappedValue(value, self._domain, self._range))
 
     @property
     @classmethod
@@ -147,52 +143,25 @@ class MappedElementParser(ElementParser, metaclass=ABCMeta):
     def _range(cls):
         pass
 
-    @property
-    @classmethod
-    @abstractmethod
-    def _error(cls):
-        pass
-
 class MappedValue(BaseValue):
-    def __init__(self, value, _domain, _range, _error):
+    def __init__(self, value, _domain, _range):
         self._domain = _domain
         self._range = _range
-        self._error = _error
 
         try:
-            self.value = bytes_to_float(value, self._domain, self._range, self._error)
+            self.value = bytes_to_float(value, self._domain, self._range)
         except TypeError:
             self.value = value
 
     def __bytes__(self):
-        return float_to_bytes(self.value, self._domain, self._range, self._error)
+        return float_to_bytes(self.value, self._domain, self._range)
 
     def __str__(self):
-        if self.value is not None:
-            return format(self.value)
-        return ""
+        return format(self.value)
 
     def __float__(self):
         return self.value
 
-class IEEE754ElementParser(ElementParser, metaclass=ABCMeta):
-    def __init__(self, value):
-        super().__init__(IEEE754Value(value))
-
-
-class IEEE754Value(BaseValue):
-    def __init__(self, value):
-        try:
-            self.value = ieee754_bytes_to_fp(value)
-        except TypeError:
-            self.value = value
-
-    def __bytes__(self):
-        #TODO
-        return ieee754_double_to_bytes(self.value)
-
-    def __str__(self):
-        return bytes_to_hexstr(self.value, start='0x', sep='')
 
 
 
